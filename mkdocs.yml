@@ -1,0 +1,22 @@
+site_name: Crafting Neurons - PlayBook
+repo_url: https://github.com/MrDataPsycho/crafting-neurons-posts
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+nav:
+  - Home: index.md
+  - README: ../README.md
+
