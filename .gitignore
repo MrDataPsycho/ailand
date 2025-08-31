@@ -76,3 +76,4 @@ temp/
 target/
 
 # Jupyter Notebook
+.envs
