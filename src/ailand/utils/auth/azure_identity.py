@@ -1,7 +1,7 @@
 import resource
 from typing import Callable
 from azure.identity import CertificateCredential
-from cnlib.utils.settings.core import AOAISettings
+from ailand.utils.settings.core import AOAISettings
 
 
 def get_cert_token_provider(settings: AOAISettings) -> Callable[[], str]:

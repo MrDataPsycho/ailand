@@ -1,4 +1,4 @@
-from cnlib.utils.settings.base import ABCBaseSettings
+from ailand.utils.settings.base import ABCBaseSettings
 
 
 # Default Azure Cognitive Services resource endpoint without /.default suffix

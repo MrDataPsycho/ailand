@@ -1,6 +1,6 @@
 [project]
-name = "cnlib"
-version = "0.1.0"
+name = "ailand"
+dynamic = ["version"]
 description = "Crafting Neurons - Enterprise AI application Development"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -12,11 +12,15 @@ dependencies = [
 ]
 
 [project.scripts]
-cnlib = "cnlib:main"
+ailand = "ailand:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "src/ailand/__about__.py"
+attribute = "__version__"
 
 [dependency-groups]
 dev = [
