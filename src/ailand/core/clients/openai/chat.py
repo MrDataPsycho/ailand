@@ -304,6 +304,12 @@ if __name__ == "__main__":
     response = client1.chat(messages=[{"role": "user", "content": "Hello, how are you?"}])
     logger.info(f"Response with default logging {response}")
 
+    response = client1.parse(
+        messages=[{"role": "user", "content": "Generate a user with name Alice and id 123"}],
+        response_format=User
+    )
+    logger.info(f"Parsed user: {response}")
+
 
     # Example with context manager and quiet logging
     with AzureOpenAIChatClient(
