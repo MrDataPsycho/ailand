@@ -1,8 +1,9 @@
 from pathlib import Path
+import os
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-DEFAULT_ENV_FILE = Path(".envs").joinpath("dev.env")
+DEFAULT_ENV_FILE = Path(".envs")
 
 
 class ABCBaseSettings(BaseSettings):
@@ -28,3 +29,21 @@ class ABCBaseSettings(BaseSettings):
             )
 
         return CustomSettings()
+    
+    @classmethod
+    def from_runtime_env(cls):
+        """
+        Load settings from the first available environment file in priority order:
+        If neither exists, fall back to default settings.
+        """
+
+        ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
+        candidates = [
+            DEFAULT_ENV_FILE.joinpath("local.env"),
+            DEFAULT_ENV_FILE.joinpath("dev.env"),
+        ]
+        if ENVIRONMENT == "local":
+            for env_path in candidates:
+                if env_path.exists():
+                    return cls.from_env_file(env_path)
+        return cls()

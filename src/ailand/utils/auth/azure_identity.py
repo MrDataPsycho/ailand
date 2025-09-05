@@ -1,10 +1,10 @@
 import resource
 from typing import Callable
 from azure.identity import CertificateCredential
-from ailand.utils.settings.core import AOAISettings
+from ailand.utils.settings.core import AOAICerteSettings
 
 
-def get_cert_token_provider(settings: AOAISettings) -> Callable[[], str]:
+def get_cert_token_provider(settings: AOAICerteSettings) -> Callable[[], str]:
     """Returns a callable that provides a bearer token using certificate-based authentication.
 
     This function creates a token provider that can be used directly with AzureOpenAI client.

@@ -1,119 +1,29 @@
 import logging
-from pathlib import Path
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Optional, Type, TypeVar
 
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from openai import AsyncAzureOpenAI, AzureOpenAI, RateLimitError
 from pydantic import BaseModel
-from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
-                     wait_exponential)
+
 
 from ailand.core.clients.interfaces import BaseChatClient
 from ailand.core.clients.openai.catalog import APIVersion, ChatModelSelection
-from ailand.core.clients.openai.endpoint_selector import EndpointSelector
 from ailand.core.clients.retry import RetryConfig
 from ailand.utils.auth.azure_identity import get_cert_token_provider
-from ailand.utils.settings.core import AOAISettings, DEFAULT_COGNITIVE_SERVICE_ENDPOINT
+from ailand.utils.settings.core import AOAICerteSettings, DEFAULT_COGNITIVE_SERVICE_ENDPOINT
 
 T = TypeVar('T', bound=BaseModel)
 
 logger = logging.getLogger(__name__)
 
 
-class AzureOpenAIChatClient(BaseChatClient):
+class BaseOpenAIClient:
     """
-    Enhanced client for Azure OpenAI chat completions, supporting:
-    - Multiple endpoint types (standard, semantic network)
-    - Flexible authentication methods
-    - Automatic settings discovery
-    - Factory methods for easier initialization
-    - Context manager support
-    - Improved error handling
+    Base class for OpenAI clients with common functionality.
     """
-    def __init__(
-        self,
-        model: ChatModelSelection,
-        api_version: APIVersion,
-        endpoint: Optional[str] = None,
-        api_key: Optional[str] = None,
-        azure_ad_token: Optional[str] = None,
-        aoai_settings: Optional[AOAISettings] = None,
-        endpoint_type: str = EndpointSelector.DEFAULT,
-        retry_config: RetryConfig = RetryConfig.CONSERVATIVE,
-    ):
-        """
-        Initialize the AzureOpenAIChatClient with enhanced configuration options.
+    pass
 
-        Args:
-            model (ChatModelSelection): The chat model to use.
-            api_version (APIVersion): The API version to use.
-            endpoint (str, optional): Direct endpoint URL override (highest priority).
-            api_key (str, optional): API key for authentication.
-            azure_ad_token (str, optional): Azure AD token for authentication.
-            aoai_settings (AOAISettings, optional): Settings object with endpoints and auth config.
-            endpoint_type (str, optional): Which endpoint type to use from settings.
-                Use EndpointSelector.STANDARD or EndpointSelector.SEMANTIC_NETWORK.
-            retry_config (RetryConfig, optional): Retry configuration.
-            
-        Notes:
-            - Authentication priority: api_key > azure_ad_token > certificate > DefaultAzureCredential
-            - Endpoint priority: direct endpoint > selected from settings > error
-        """
-            
-        # Determine endpoint (direct endpoint has priority)
-        self.endpoint = endpoint
-        if aoai_settings:
-            self.endpoint = EndpointSelector.get_endpoint(aoai_settings, endpoint_type)
-        if not self.endpoint:
-            raise ValueError(
-                "Endpoint must be provided either directly or via settings. "
-                "Check that your settings object contains the required endpoint fields."
-            )
-        
-        # Store configuration
-        self.model = model
-        self.api_version = api_version
-        self.retry_config = retry_config
-        self.aoai_settings = aoai_settings
-        
-        # Create clients
-        self.openai = self._build_client(api_key, azure_ad_token, sync=True)
-        self.async_openai = self._build_client(api_key, azure_ad_token, sync=False)
-        
-        logger.info(f"Initialized AzureOpenAIChatClient with model={model}, endpoint={self.endpoint}")
-
-    @classmethod
-    def from_aoai_settings(
-        cls,
-        aoai_settings: AOAISettings,
-        model: ChatModelSelection = ChatModelSelection.DEFAULT,
-        api_version: APIVersion = APIVersion.DEFAULT,
-        endpoint_type: str = EndpointSelector.DEFAULT,
-        **kwargs
-    ) -> "AzureOpenAIChatClient":
-        """
-        Factory method to create a client with simpler configuration.
-        
-        Args:
-            model: The model to use
-            api_version: API version (defaults to latest)
-            endpoint_type: Which endpoint type to use (standard or semantic_network)
-            settings_path: Optional path to settings file
-            **kwargs: Additional arguments passed to the constructor
-            
-        Returns:
-            Configured AzureOpenAIChatClient
-        """
-        # Load settings if path provided
-        return cls(
-            model=model,
-            api_version=api_version,
-            aoai_settings=aoai_settings,
-            endpoint_type=endpoint_type,
-            **kwargs
-        )
-
-    def _resolve_authentication(self, api_key: Optional[str], azure_ad_token: Optional[str]) -> Dict[str, Any]:
+    def _resolve_authentication(self, api_key: Optional[str] = None, azure_ad_token: Optional[str] = None, aoai_cert_setting: Optional[AOAICerteSettings] = None) -> Dict[str, Any]:
         """
         Resolve authentication credentials in order of priority.
         
@@ -132,10 +42,10 @@ class AzureOpenAIChatClient(BaseChatClient):
             
         if azure_ad_token:
             return {"azure_ad_token": azure_ad_token}
-            
-        if self.aoai_settings:
+
+        if aoai_cert_setting:
             try:
-                return {"azure_ad_token_provider": get_cert_token_provider(self.aoai_settings)}
+                return {"azure_ad_token_provider": get_cert_token_provider(aoai_cert_setting)}
             except Exception as e:
                 logger.warning(f"Failed to create certificate token provider: {e}")
                 # Fall through to next method
@@ -152,8 +62,8 @@ class AzureOpenAIChatClient(BaseChatClient):
                 f"Set API_KEY, AZURE_AD_TOKEN, or ensure AZURE credentials are available: {e}"
             )
             raise ValueError(f"No valid authentication method available: {e}")
-
-    def _build_client(self, api_key: Optional[str], azure_ad_token: Optional[str], sync: bool = True):
+        
+    def _build_client(self, api_key: Optional[str], azure_ad_token: Optional[str], aoai_cert_settings: Optional[AOAICerteSettings], sync: bool = True):
         """
         Initialize the AzureOpenAI or AsyncAzureOpenAI client with appropriate authentication.
 
@@ -172,27 +82,72 @@ class AzureOpenAIChatClient(BaseChatClient):
         }
 
         # Resolve authentication and update args
-        auth_args = self._resolve_authentication(api_key, azure_ad_token)
+        auth_args = self._resolve_authentication(api_key, azure_ad_token, aoai_cert_settings)
         common_args.update(auth_args)
 
         # Create appropriate client type
         client_class = AzureOpenAI if sync else AsyncAzureOpenAI
         return client_class(**common_args)
 
-    def _get_retry_decorator(self):
-        """
-        Get retry decorator with current configuration.
 
-        Returns:
-            Callable: A tenacity retry decorator configured for RateLimitError.
+class AzureOpenAIChatClient(BaseChatClient, BaseOpenAIClient):
+    """
+    Enhanced client for Azure OpenAI chat completions, supporting:
+    - Multiple endpoint types (standard, semantic network)
+    - Flexible authentication methods
+    - Automatic settings discovery
+    - Factory methods for easier initialization
+    - Context manager support
+    - Improved error handling
+    """
+    def __init__(
+        self,
+        model: ChatModelSelection,
+        api_version: APIVersion,
+        endpoint: Optional[str] = None,
+        api_key: Optional[str] = None,
+        azure_ad_token: Optional[str] = None,
+        aoai_cert_settings: Optional[AOAICerteSettings] = None,
+        retry_config: RetryConfig = RetryConfig.CONSERVATIVE,
+    ):
         """
-        settings = self.retry_config.settings
-        return retry(
-            retry=retry_if_exception_type(RateLimitError),
-            wait=wait_exponential(multiplier=settings.multiplier, min=settings.min_wait, max=settings.max_wait),
-            stop=stop_after_attempt(settings.max_attempts),
-            reraise=True,
-        )
+        Initialize the AzureOpenAIChatClient with enhanced configuration options.
+
+        Args:
+            model (ChatModelSelection): The chat model to use.
+            api_version (APIVersion): The API version to use.
+            endpoint (str, optional): Direct endpoint URL override (highest priority).
+            api_key (str, optional): API key for authentication.
+            azure_ad_token (str, optional): Azure AD token for authentication.
+            aoai_settings (AOAISettings, optional): Settings object with endpoints and auth config.
+            endpoint_type (str, optional): Which endpoint type to use from settings.
+                Use EndpointSelector.STANDARD or EndpointSelector.SEMANTIC_NETWORK.
+            retry_config (RetryConfig, optional): Retry configuration.
+                When False (default), suppresses detailed HTTP logs from Azure services.
+            
+        Notes:
+            - Authentication priority: api_key > azure_ad_token > certificate > DefaultAzureCredential
+            - Endpoint priority: direct endpoint > selected from settings > error
+        """
+            
+        # Determine endpoint (direct endpoint has priority)
+        self.endpoint = endpoint
+        if not self.endpoint:
+            raise ValueError(
+                "Endpoint must be provided either directly or via settings. "
+                "Check that your settings object contains the required endpoint fields."
+            )
+        
+        # Store configuration
+        self.model = model
+        self.api_version = api_version
+        self.retry_config = retry_config
+        self.aoai_cert_settings = aoai_cert_settings
+
+        # Create clients
+        self.openai = self._build_client(api_key, azure_ad_token, aoai_cert_settings, sync=True)
+        self.async_openai = self._build_client(api_key, azure_ad_token, aoai_cert_settings, sync=False)
+
 
     def chat(self, messages: list[dict], temperature=0, config: dict = {}) -> str:
         """
@@ -207,7 +162,7 @@ class AzureOpenAIChatClient(BaseChatClient):
             str: The response content from the model.
         """
 
-        @self._get_retry_decorator()
+        @self._get_retry_decorator(exception=RateLimitError)
         def _chat_with_retry():
             response = self.openai.chat.completions.create(
                 model=self.model,
@@ -233,7 +188,7 @@ class AzureOpenAIChatClient(BaseChatClient):
             str: The response content from the model.
         """
 
-        @self._get_retry_decorator()
+        @self._get_retry_decorator(exception=RateLimitError)
         async def _chat_async_with_retry():
             response = await self.async_openai.chat.completions.create(
                 model=self.model,
@@ -259,8 +214,8 @@ class AzureOpenAIChatClient(BaseChatClient):
         Returns:
             Any: Tool call(s) selected by the model.
         """
-        
-        @self._get_retry_decorator()        
+
+        @self._get_retry_decorator(exception=RateLimitError)
         def _select_tool_with_retry():
             response = self.openai.chat.completions.create(
                 model=self.model,
@@ -287,7 +242,7 @@ class AzureOpenAIChatClient(BaseChatClient):
         Returns:
             Any: Tool call(s) selected by the model.
         """
-        @self._get_retry_decorator()        
+        @self._get_retry_decorator(exception=RateLimitError)        
         async def _select_tool_async_with_retry():
             response = await self.async_openai.chat.completions.create(
                 model=self.model,
@@ -314,7 +269,7 @@ class AzureOpenAIChatClient(BaseChatClient):
             Any: The parsed response object or refusal message.
         """
 
-        @self._get_retry_decorator()
+        @self._get_retry_decorator(exception=RateLimitError)
         def _parse_with_retry():
             response = self.openai.chat.completions.parse(
                 model=self.model,
@@ -348,7 +303,7 @@ class AzureOpenAIChatClient(BaseChatClient):
             Any: The parsed response object or refusal message.
         """
 
-        @self._get_retry_decorator()
+        @self._get_retry_decorator(exception=RateLimitError)
         async def _parse_async_with_retry():
             response = await self.async_openai.chat.completions.parse(
                 model=self.model,
@@ -395,33 +350,46 @@ class AzureOpenAIChatClient(BaseChatClient):
 
 
 if __name__ == "__main__":
-    from ailand.utils.settings.core import AOAISettings
+    from ailand.utils.settings.core import AOAIEndpointSettings
     from pathlib import Path
     from pydantic import BaseModel
     import logging
+    import asyncio
 
-    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
     class User(BaseModel):
         name: str
         id: str
 
-    ENVFILE_PATH = Path(".envs").joinpath("local.env")
-    aoai_settings = AOAISettings.from_env_file(ENVFILE_PATH)
+    aoai_settings = AOAIEndpointSettings.from_runtime_env()
+    aoai_cert_settings = AOAICerteSettings.from_runtime_env()
+    
+    # Client with default logging (verbose logging disabled)
     client1 = AzureOpenAIChatClient(
         model=ChatModelSelection.GPT4_1_MINI, 
-        api_version=APIVersion.DEFAULT, 
-        aoai_settings=aoai_settings
+        api_version=APIVersion.DEFAULT,
+        endpoint=aoai_settings.OPENAI_API_BASE_DEFAULT,
+        aoai_cert_settings=aoai_cert_settings,
     )
 
     response = client1.chat(messages=[{"role": "user", "content": "Hello, how are you?"}])
-    print(response)
+    logger.info(f"Response with default logging {response}")
 
-    # Example with context manager
-    with AzureOpenAIChatClient.from_aoai_settings(
-        aoai_settings=aoai_settings,
-    ) as client2:
-        response = client2.chat(
-            messages=[{"role": "user", "content": "Hello, how are you?"}]
+
+    # Example with context manager and quiet logging
+    with AzureOpenAIChatClient(
+        model=ChatModelSelection.GPT4_1_MINI, 
+        api_version=APIVersion.DEFAULT,
+        endpoint=aoai_settings.OPENAI_API_BASE_ALT,
+        aoai_cert_settings=aoai_cert_settings,
+    ) as client3:
+        response = client3.chat(
+            messages=[{"role": "user", "content": "What is the capital of France?"}]
         )
-        print(response)
+        print("Response with context manager:", response)
+        response = asyncio.run(client3.chat_async(
+            messages=[{"role": "user", "content": "Hello, how are you?"}]
+        ))
+
+        logger.info(f"Async response with verbose logging: {response}")

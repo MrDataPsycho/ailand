@@ -5,13 +5,16 @@ from ailand.utils.settings.base import ABCBaseSettings
 # This will be automatically appended in model_post_init if needed
 DEFAULT_COGNITIVE_SERVICE_ENDPOINT = "https://cognitiveservices.azure.com"
 
-class AOAISettings(ABCBaseSettings):
+class AOAIEndpointSettings(ABCBaseSettings):
+    OPENAI_API_BASE_DEFAULT: str
+    OPENAI_API_BASE_ALT: str
+
+
+class AOAICerteSettings(ABCBaseSettings):
     TENANT_ID: str
     CLIENT_ID: str
     NO_PROXY: str
     RESOURCE: str = DEFAULT_COGNITIVE_SERVICE_ENDPOINT
-    OPENAI_API_BASE: str
-    OPENAI_API_BASE_SN: str
     PUBLIC_CERT_KEY: str
     PRIVATE_CERT_KEY: str
 
@@ -37,8 +40,24 @@ class AOAISettings(ABCBaseSettings):
     @property
     def certificate_string(self) -> str:
         return self.PRIVATE_CERT_KEY.encode() + b"\n" + self.PUBLIC_CERT_KEY.encode()
-    
+
+
+
+class AOAIEndpointSettings(ABCBaseSettings):
+    OPENAI_API_BASE_DEFAULT: str
+    OPENAI_API_BASE_ALT: str
+
+
+class AOAIKeySettings(ABCBaseSettings):
+    OPENAI_API_BASE_DEFAULT: str
+    OPENAI_API_BASE_ALT: str
+
+
 
 if __name__ == "__main__":
-    settings = AOAISettings.from_env_file(".envs/local.env")
-    print(settings.RESOURCE)
+    aoai_endpoint_settings = AOAIEndpointSettings.from_runtime_env()
+    print(aoai_endpoint_settings.model_dump_json(indent=2))
+    aoai_cert_settings = AOAICerteSettings.from_runtime_env()
+    print(aoai_cert_settings.model_dump_json(indent=2))
+    aoai_key_settings = AOAIKeySettings.from_runtime_env()
+    print(aoai_key_settings.model_dump_json(indent=2))
