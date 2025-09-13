@@ -29,10 +29,7 @@ def get_cert_token_provider(settings: AOAICerteSettings) -> Callable[[], str]:
         ```
 
     Args:
-        tenant_id: The Azure AD tenant ID
-        client_id: The Azure AD client ID
-        certificate_data: The certificate data in PEM format
-        resource: The resource to request token for, defaults to Azure OpenAI
+        settings: An instance of AOAICerteSettings containing the necessary certificate details.
 
     Returns:
         A callable that returns a bearer token when invoked

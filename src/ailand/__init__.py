@@ -3,8 +3,6 @@ Ailand package initialization.
 """
 from ailand.__about__ import VERSION
 
-# Import utils module to initialize logging configuration
-import ailand.utils
 
 def main() -> None:
     """

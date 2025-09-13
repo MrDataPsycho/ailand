@@ -9,12 +9,13 @@ import os
 from typing import Dict, List, Optional
 
 # Azure SDK loggers that can be quite verbose
-AZURE_VERBOSE_LOGGERS = [
+VERBOSE_LOGGERS = [
     "azure.core.pipeline.policies.http_logging_policy",
     "azure.identity",
     "azure.core.pipeline",
     "msal",
-    "urllib3.connectionpool"
+    "urllib3.connectionpool",
+    "httpx",
 ]
 
 # Log level mapping
@@ -55,7 +56,7 @@ def initialize_logging() -> None:
     """
     # Get log level from environment variable with fallback to default
     log_level_name = os.environ.get("LOG_LEVEL", DEFAULT_LOG_LEVEL).upper()
-    log_level = LOG_LEVEL_MAP.get(log_level_name, logging.WARNING)
+    log_level = LOG_LEVEL_MAP.get(log_level_name, logging.INFO)
 
     # Configure root logger
     logging.basicConfig(
@@ -69,14 +70,14 @@ def initialize_logging() -> None:
     # Set Azure SDK loggers to a higher level to reduce verbosity
     # unless LOG_LEVEL=DEBUG is explicitly set
     if log_level > logging.DEBUG:
-        for logger_name in AZURE_VERBOSE_LOGGERS:
+        for logger_name in VERBOSE_LOGGERS:
             logging.getLogger(logger_name).setLevel(logging.WARNING)
         logger.debug("Azure SDK verbose logging disabled (set LOG_LEVEL=DEBUG to enable)")
     else:
         logger.debug("Azure SDK verbose logging enabled")
 
 
-def configure_azure_logging(
+def configure_third_party_logging(
     enable_verbose: bool = False, 
     log_level: int = logging.WARNING,
     verbose_log_level: int = logging.INFO,
@@ -96,7 +97,7 @@ def configure_azure_logging(
         logger_names: Custom list of logger names to configure.
                      If None, uses the AZURE_VERBOSE_LOGGERS list
     """
-    logger_names = logger_names or AZURE_VERBOSE_LOGGERS
+    logger_names = logger_names or VERBOSE_LOGGERS
     
     # Set log level based on verbose flag
     level = verbose_log_level if enable_verbose else log_level
@@ -116,15 +117,15 @@ def configure_azure_logging(
         logging.info(f"Disabled verbose logging for: {', '.join(logger_names)}")
 
 
-def set_quiet_mode() -> None:
+def set_quiet_mode_for_third_party_logging() -> None:
     """
-    Shorthand to quickly disable verbose Azure logging.
+    Shorthand to quickly disable verbose third-party logging.
     """
-    configure_azure_logging(enable_verbose=False, log_level=logging.WARNING)
-    
-    
-def set_verbose_mode() -> None:
+    configure_third_party_logging(enable_verbose=False, log_level=logging.WARNING)
+
+
+def set_verbose_mode_for_third_party_logging() -> None:
     """
-    Shorthand to quickly enable verbose Azure logging for debugging.
+    Shorthand to quickly enable verbose third-party logging for debugging.
     """
-    configure_azure_logging(enable_verbose=True, verbose_log_level=logging.DEBUG)
+    configure_third_party_logging(enable_verbose=True, verbose_log_level=logging.DEBUG)

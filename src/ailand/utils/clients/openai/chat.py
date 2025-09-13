@@ -4,11 +4,11 @@ from openai import  RateLimitError
 from pydantic import BaseModel
 
 
-from ailand.core.clients.interfaces import BaseChatClient
-from ailand.core.clients.openai.catalog import APIVersion, ChatModelSelection
-from ailand.core.clients.retry import RetryConfig
+from ailand.utils.clients.interfaces import BaseChatClient
+from ailand.utils.clients.openai.catalog import APIVersion, ChatModelSelection
+from ailand.utils.clients.retry import RetryConfig
 from ailand.utils.settings.core import AOAICerteSettings
-from ailand.core.clients.openai.base import BaseOpenAIClient
+from ailand.utils.clients.openai.base import BaseOpenAIClient
 
 T = TypeVar('T', bound=BaseModel)
 

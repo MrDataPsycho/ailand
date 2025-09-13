@@ -18,5 +18,7 @@ theme:
 
 nav:
   - Home: index.md
+  - Security:
+    - Secure Authentication: secure-authentication.md
   - README: ../README.md
 

@@ -3,9 +3,15 @@ from ailand.utils.settings.base import ABCBaseSettings
 
 # Default Azure Cognitive Services resource endpoint without /.default suffix
 # This will be automatically appended in model_post_init if needed
-DEFAULT_COGNITIVE_SERVICE_ENDPOINT = "https://cognitiveservices.azure.com"
+DEFAULT_COGNITIVE_SERVICE_ENDPOINT = "https://cognitiveservices.azure.com/.default"
 
 class AOAIEndpointSettings(ABCBaseSettings):
+    OPENAI_API_BASE_DEFAULT: str
+    OPENAI_API_BASE_ALT: str
+    NO_PROXY: str
+
+
+class AOAIKeySettings(ABCBaseSettings):
     OPENAI_API_BASE_DEFAULT: str
     OPENAI_API_BASE_ALT: str
 
@@ -13,7 +19,6 @@ class AOAIEndpointSettings(ABCBaseSettings):
 class AOAICerteSettings(ABCBaseSettings):
     TENANT_ID: str
     CLIENT_ID: str
-    NO_PROXY: str
     RESOURCE: str = DEFAULT_COGNITIVE_SERVICE_ENDPOINT
     PUBLIC_CERT_KEY: str
     PRIVATE_CERT_KEY: str
@@ -41,16 +46,6 @@ class AOAICerteSettings(ABCBaseSettings):
     def certificate_string(self) -> str:
         return self.PRIVATE_CERT_KEY.encode() + b"\n" + self.PUBLIC_CERT_KEY.encode()
 
-
-
-class AOAIEndpointSettings(ABCBaseSettings):
-    OPENAI_API_BASE_DEFAULT: str
-    OPENAI_API_BASE_ALT: str
-
-
-class AOAIKeySettings(ABCBaseSettings):
-    OPENAI_API_BASE_DEFAULT: str
-    OPENAI_API_BASE_ALT: str
 
 
 
