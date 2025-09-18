@@ -7,3 +7,16 @@ This repository is dedicated to helping individuals and teams learn how to creat
 ## Repository as Tutorial
 This repository is structured as a comprehensive tutorial, guiding you through the process of building enterprise-grade AI applications step-by-step. It includes code examples, best practices, and architectural patterns that are essential for developing scalable and maintainable AI solutions. Tutorial page [here](https://mrdatapsycho.github.io/ailand/).
 
+
+src/genailib/core/client
+
+ENDOPOINT 
+CERTIFICATE_DATA
+
+
+src/ailand/utils
+├── __init__.py
+├── auth
+├── clients
+├── logging.py
+└── settings
