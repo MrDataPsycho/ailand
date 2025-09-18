@@ -50,9 +50,9 @@ class AOAICerteSettings(ABCBaseSettings):
 
 
 if __name__ == "__main__":
-    aoai_endpoint_settings = AOAIEndpointSettings.from_runtime_env()
+    aoai_endpoint_settings = AOAIEndpointSettings()
     print(aoai_endpoint_settings.model_dump_json(indent=2))
-    aoai_cert_settings = AOAICerteSettings.from_runtime_env()
+    aoai_cert_settings = AOAICerteSettings()
     print(aoai_cert_settings.model_dump_json(indent=2))
-    aoai_key_settings = AOAIKeySettings.from_runtime_env()
+    aoai_key_settings = AOAIKeySettings()
     print(aoai_key_settings.model_dump_json(indent=2))

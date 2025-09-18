@@ -28,6 +28,14 @@ notebooks
 ├── aoai-client-example.ipynb (Example notebook for Enterprise OpenAI client)
 ```
 
+```
+docs
+├── chapter-01
+│   ├── 01-enterprise-setup-env-var.md
+│   └── 02-secure-auth-azure-openai.md
+└── index.md
+```
+
 Level 3: Main Packaged Application Structure
 
 ```
